@@ -1,6 +1,10 @@
 use hound;
+use serde_json::json;
 use std::f32::consts::PI;
+use std::fs::File;
 use std::i16;
+use std::io::prelude::*;
+use std::path::Path;
 
 #[allow(dead_code)]
 fn write_basic_wav() {
@@ -20,7 +24,9 @@ fn write_basic_wav() {
 }
 
 fn main() {
-    let factor = 150;
+    let factor = 30;
+    let max = i16::MAX;
+    let min = i16::MIN;
 
     // let mut reader = hound::WavReader::open("adio_file4.wav").unwrap();
     let mut reader = hound::WavReader::open("file3.wav").unwrap();
@@ -42,14 +48,36 @@ fn main() {
 
     let mut rms_data = vec![];
 
+    let mut sample_max = 0;
+    let mut sample_min = 0;
+
     for (i, sample) in reader.samples::<i16>().enumerate() {
         slice_counter += 1;
+
+        let sample_val = sample.unwrap();
+
+        if sample_val > max {
+            sample_max = max;
+        }
+
+        if sample_val > sample_max {
+            sample_max = sample_val;
+        }
+
+        if sample_val < min {
+            sample_min = min;
+        }
+
+        if sample_val < sample_min {
+            sample_min = sample_val;
+        }
 
         // println!("{}", sample.unwrap());
 
         // rms_accumulator += (sample.unwrap() as i64).pow(2);
         // rms_accumulator += sample.unwrap().pow(2);
-        rms_accumulator = sample.unwrap().abs().max(rms_accumulator);
+
+        // rms_accumulator = sample.unwrap().abs().max(rms_accumulator);
 
         if slice_counter == new_sample_rate || i == duration as usize {
             // let slice_root_mean = rms_accumulator / slice_counter as i64;
@@ -60,13 +88,38 @@ fn main() {
             // println!("{},", slice_rms);
             // rms_data.push(slice_rms);
 
-            println!("{},", rms_accumulator);
-            rms_data.push(rms_accumulator);
+            // println!("{},", rms_accumulator);
+            // rms_data.push(rms_accumulator);
+            rms_data.push(sample_min);
+            rms_data.push(sample_max);
+
+            sample_min = 0;
+            sample_max = 0;
 
             rms_accumulator = 0;
             slice_counter = 0;
         }
     }
 
-    println!("Data Length: {:?}, {}", rms_data.len(), i16::MAX);
+    println!("Data Length: {:?}", rms_data.len());
+    let wav_data = json!({
+        "duration": duration,
+        "orig_sample_count": sample_count,
+        "new_sample_rate": new_sample_rate,
+        "sample_rate": sample_rate,
+        "new_sample_count": rms_data.len(),
+        "rms": rms_data
+    });
+
+    let path = Path::new("data.json");
+
+    let mut file = match File::create("data.json") {
+        Err(why) => panic!("Couldn't create {}: {}", path.display(), why),
+        Ok(file) => file,
+    };
+
+    match file.write_all(wav_data.to_string().as_bytes()) {
+        Err(why) => panic!("Couldn't write to {}: {}", path.display(), why),
+        Ok(_) => println!("Successfully wrote to {}", path.display()),
+    };
 }
