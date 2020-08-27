@@ -29,7 +29,7 @@ fn main() {
     let min = i16::MIN;
 
     // let mut reader = hound::WavReader::open("adio_file4.wav").unwrap();
-    let mut reader = hound::WavReader::open("file3.wav").unwrap();
+    let mut reader = hound::WavReader::open("file2.wav").unwrap();
     // let mut reader = hound::WavReader::open("sine.wav").unwrap();
 
     println!("Spec: {:?}", reader.spec());
@@ -72,24 +72,10 @@ fn main() {
             sample_min = sample_val;
         }
 
-        // println!("{}", sample.unwrap());
-
-        // rms_accumulator += (sample.unwrap() as i64).pow(2);
-        // rms_accumulator += sample.unwrap().pow(2);
-
-        // rms_accumulator = sample.unwrap().abs().max(rms_accumulator);
-
         if slice_counter == new_sample_rate || i == duration as usize {
-            // let slice_root_mean = rms_accumulator / slice_counter as i64;
-            // let slice_rms = (slice_root_mean as f32).sqrt();
+            let time = i / sample_rate as usize;
 
-            // let time = i / sample_rate as usize;
-            // // println!("{}: {}", time, slice_rms);
-            // println!("{},", slice_rms);
-            // rms_data.push(slice_rms);
-
-            // println!("{},", rms_accumulator);
-            // rms_data.push(rms_accumulator);
+            // println!("{}: Max {}, Min {}", time, sample_max, sample_min);
             rms_data.push(sample_min);
             rms_data.push(sample_max);
 
@@ -108,8 +94,12 @@ fn main() {
         "new_sample_rate": new_sample_rate,
         "sample_rate": sample_rate,
         "new_sample_count": rms_data.len(),
+        "min": min,
+        "max": max,
         "rms": rms_data
     });
+
+    println!("{}", wav_data);
 
     let path = Path::new("data.json");
 
